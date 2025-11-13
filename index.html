@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manajer Keuangan Harian</title>
+    <!-- Memuat Tailwind CSS dari CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FONT BARU: Memuat Poppins (Stylish & Tebal) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Skrip untuk memuat tema (Gelap/Terang) secepat mungkin -->
+    <script>
+        // Mencegah "flash" (FOUC) saat mode gelap aktif
+        // PERBAIKAN: Menggunakan KUNCI v3 yang konsisten dengan JS Anda
+        if (localStorage.getItem('catat_jajan_theme_v3') === 'dark' || 
+            (!('catat_jajan_theme_v3' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+    
+    <style>
+        /* Menggunakan font Poppins BARU */
+        body {
+            font-family: 'Poppins', sans-serif;
+
+            /* --- LATAR BELAKANG GAMBAR BARU (Light Mode) --- */
+            /* PERUBAHAN: Mengganti ke latar belakang "dark silk" yang stylish */
+            background-image: url('https://images.unsplash.com/photo-1531303668352-b99580c14c2b?q=80&w=2070&auto=format&fit=crop');
+            background-size: cover; /* Menutupi seluruh layar */
+            background-position: center; /* Posisikan di tengah */
+            background-attachment: fixed; /* Gambar diam saat di-scroll */
+            background-repeat: no-repeat;
+        }
+        
+        /* --- LATAR BELAKANG BARU (Dark Mode) --- */
+        .dark body {
+             /* Tidak perlu ditimpa, gambar yang sama bekerja dengan baik */
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Animasi item baru masuk (muncul dari atas) */
+        .transaction-item-enter {
+            animation: fadeInAndSlide 0.3s ease-out;
+        }
+
+        @keyframes fadeInAndSlide {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Animasi item keluar (fade out ke samping) */
+        .transaction-item-exit {
+            animation: fadeOutAndSlide 0.3s ease-in forwards;
+        }
+
+        @keyframes fadeOutAndSlide {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(20px); }
+        }
+        
+        /* --- ANIMASI BARU UNTUK LANDING/MAIN APP --- */
+        .animate-fadeIn {
+            animation: fadeIn 0.5s ease-out;
+        }
+        .animate-fadeOut {
+            animation: fadeOut 0.5s ease-in forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        /* --- AKHIR ANIMASI BARU --- */
+
+        /* Memastikan input angka tidak ada panah atas/bawah */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none; margin: 0;
+        }
+        input[type=number] { -moz-appearance: textfield; }
+
+        /* Transisi halus untuk elemen UI */
+        .btn, .form-input {
+            transition: all 0.2s ease-out;
+        }
+        
+        /* --- EFEK GLASSMORPHISM UNTUK CARD --- */
+        .card {
+            transition: all 0.2s ease-out;
+            /* PERBAIKAN: Ini adalah style glassmorphism 'Light Mode' (default) */
+            background-color: rgba(255, 255, 255, 0.7); /* Latar belakang putih transparan */
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px); /* Safari */
+            border: 1px solid rgba(255, 255, 255, 0.18); /* Border putih tipis */
+        }
+        
+        /* PERBAIKAN: Ini adalah style 'Dark Mode' yang sekarang berbeda */
+        .dark .card {
+            background-color: rgba(30, 41, 59, 0.7); /* dark:bg-gray-800/70 */
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px); /* Safari */
+            border: 1px solid rgba(255, 255, 255, 0.08); /* Border putih sangat tipis */
+        }
+        /* --- AKHIR EFEK GLASSMORPHISM --- */
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .dark .btn:hover {
+             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<!-- 
+  Kelas 'bg-gray-100 dark:bg-gray-900' dihapus dari body 
+  karena sekarang kita atur di <style>
+-->
+<body class="text-gray-900 dark:text-gray-100 min-h-screen">
+
+    <!-- BAGIAN BARU: Landing Screen -->
+    <div id="landing-screen" class="flex items-center justify-center min-h-screen p-4 animate-fadeIn">
+        <div class="card p-8 md:p-12 rounded-xl shadow-lg text-center max-w-lg w-full">
+            <h1 class="text-4xl font-black text-indigo-600 dark:text-indigo-400 mb-4">
+                Selamat Datang!
+            </h1>
+            <p class="text-lg text-gray-700 dark:text-gray-300 mb-8">
+                Mulai kelola pemasukan dan pengeluaran harian Anda dengan mudah.
+            </p>
+            <button id="enter-app-btn" class="btn w-full bg-indigo-600 text-white p-3 rounded-lg font-semibold text-lg hover:bg-indigo-700 shadow">
+                Masuk ke Aplikasi
+            </button>
+        </div>
+    </div>
+
+    <!-- APLIKASI UTAMA (Disembunyikan) -->
+    <div id="main-app" class="hidden">
+        
+        <!-- Kontainer Utama (Dashboard Layout) -->
+        <!-- 
+            PERBAIKAN: 
+            Sebelumnya tertulis 'classL', saya perbaiki menjadi 'class'
+        -->
+        <div class="w-full max-w-7xl mx-auto p-4 md:p-8">
+            
+            <!-- 
+                BAGIAN TAMBAHAN: Header yang Hilang
+                Saya tambahkan bagian header ini,
+                termasuk 'total-amount' dan 'theme-toggle' 
+                yang Anda perlukan di JavaScript.
+            -->
+            <header class="card p-4 rounded-xl shadow-lg mb-8">
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <!-- Judul -->
+                    <div>
+                        <h1 class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">Manajer Keuangan</h1>
+                        <p class="text-sm text-gray-600 dark:text-gray-300">Catatan harian Anda</p>
+                    </div>
+                    
+                    <!-- TAMPILAN TOTAL (YANG HILANG) -->
+                    <div class="text-center sm:text-right">
+                        <span class="text-sm font-medium text-gray-500">Sisa Saldo</span>
+                        <!-- ID 'total-amount' ini PENTING untuk JavaScript -->
+                        <div id="total-amount" class="text-3xl font-black text-gray-900 dark:text-white">
+                            Rp 0
+                        </div>
+                    </div>
+
+                    <!-- TOMBOL TEMA (YANG HILANG) -->
+                    <button id="theme-toggle" class="btn p-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600">
+                        <!-- Ikon akan diisi oleh JS -->
+                    </button>
+                </div>
+            </header>
+            <!-- AKHIR HEADER -->
+
+
+            <!-- Layout 2 Kolom -->
+            <div class="flex flex-col lg:flex-row gap-8">
+
+                <!-- Kolom Utama (Formulir dan Daftar) - 2/3 -->
+                <main class="w-full lg:w-2/3">
+                    <!-- PERUBAHAN: 'bg-white dark:bg-gray-800' dihapus untuk efek glassmorphism -->
+                    <div class="card p-6 rounded-xl shadow-lg">
+                        <!-- Formulir Input -->
+                        <form id="transaction-form" class="mb-6">
+                            <h2 class="text-xl font-semibold mb-4">Tambah Transaksi Baru</h2>
+                            
+                            <!-- FITUR BARU: Tombol Toggle Pemasukan/Pengeluaran -->
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <button type="button" id="type-btn-expense" class="type-toggle-btn bg-indigo-600 text-white p-2 rounded-lg" data-type="expense">
+                                    Pengeluaran
+                                </button>
+                                <button type="button" id="type-btn-income" class="type-toggle-btn bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-2 rounded-lg" data-type="income">
+                                    Pemasukan
+                                </button>
+                            </div>
+                            <input type="hidden" id="transaction-type" value="expense">
+                            
+                            <div class="flex flex-col sm:flex-row gap-3">
+                                <input type="text" id="transaction-name" placeholder="Nama transaksi (cth: Kopi)" 
+                                       class="form-input flex-grow p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                       required>
+                                <input type="number" id="transaction-amount" placeholder="Jumlah (cth: 18000)" 
+                                       class="form-input w-full sm:w-32 p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                       required>
+                            </div>
+                            <button type="submit" 
+                                    class="btn w-full bg-indigo-600 text-white p-3 rounded-lg font-semibold mt-3 hover:bg-indigo-700 shadow">
+                                + Tambah
+                            </button>
+                        </form>
+
+                        <!-- Daftar Transaksi -->
+                        <div>
+                            <h2 class="text-xl font-semibold mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
+                                Rincian Transaksi
+                            </h2>
+                            <ul id="transaction-list" class="divide-y divide-gray-200 dark:divide-gray-700">
+                                <!-- Data akan diisi oleh JavaScript -->
+                            </ul>
+                            <button id="reset-button" 
+                                    class="btn w-full bg-red-600 text-white p-3 rounded-lg font-semibold mt-6 hover:bg-red-700">
+                                Mulai Hari Baru (Reset)
+                            </button>
+                        </div>
+                    </div>
+                </main>
+
+                <!-- Kolom Samping (Fitur Unik) - 1/3 -->
+                <aside class="w-full lg:w-1/3 flex flex-col gap-8">
+                    
+                    <!-- Fitur Unik: Ringkasan Cerdas -->
+                    <!-- PERUBAHAN: 'bg-white dark:bg-gray-800' dihapus untuk efek glassmorphism -->
+                    <div class="card p-6 rounded-xl shadow-lg">
+                        <h2 class="text-xl font-semibold mb-4">Ringkasan Hari Ini</h2>
+                        <ul class="space-y-3 text-gray-700 dark:text-gray-300">
+                            <!-- PERBAIKAN: Menampilkan Pemasukan, Pengeluaran, dan Rata-rata yang dibenarkan -->
+                            <li class="flex justify-between items-center text-green-600 dark:text-green-400">
+                                <span>Total Pemasukan:</span> 
+                                <strong id="summary-income" class="text-lg">Rp 0</strong>
+                            </li>
+                            <li class="flex justify-between items-center text-red-600 dark:text-red-400">
+                                <span>Total Pengeluaran:</span> 
+                                <strong id="summary-expense" class="text-lg">Rp 0</strong>
+                            </li>
+                            <hr class="border-gray-200 dark:border-gray-700 my-2">
+                            <li class="flex justify-between"><span>Jumlah Pengeluaran:</span> <strong id="summary-count" class="text-gray-900 dark:text-white">0</strong></li>
+                            <li class="flex justify-between"><span>Rata-rata Pengeluaran:</span> <strong id="summary-avg" class="text-gray-900 dark:text-white">Rp 0</strong></li>
+                            <li class="flex justify-between"><span>Jajan Termahal:</span> <strong id="summary-max" class="text-gray-900 dark:text-white">-</strong></li>
+                        </ul>
+                    </div>
+
+                    <!-- Fitur Unik: Jajan Favorit (Quick Add) -->
+                    <!-- PERUBAHAN: 'bg-white dark:bg-gray-800' dihapus untuk efek glassmorphism -->
+                    <div class="card p-6 rounded-xl shadow-lg">
+                        <h2 class="text-xl font-semibold mb-4">Pengeluaran Favorit</h2>
+                        <!-- Daftar Tombol Favorit -->
+                        <div id="favorites-list" class="flex flex-wrap gap-2 mb-4">
+                            <!-- Tombol favorit diisi oleh JS -->
+                        </div>
+                        
+                        <!-- Formulir Tambah Favorit -->
+                        <form id="favorite-form">
+                            <label class="text-sm font-medium text-gray-500">Tambah Favorit Baru:</label>
+                            <div class="flex gap-2 mt-2">
+                                <input type="text" id="favorite-name" placeholder="Nama" class="form-input flex-grow p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                                <input type="number" id="favorite-amount" placeholder="Harga" class="form-input w-24 p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                                <button type="submit" class="btn bg-green-500 hover:bg-green-600 text-white font-bold p-2 rounded-lg">+</button>
+                            </div>
+                        </form>
+                    </div>
+
+                </aside>
+            </div>
+        </div>
+    </div> <!-- Akhir #main-app -->
+
+    <!-- Ikon SVG untuk Tombol Tema -->
+    <svg id="icon-sun" class="hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-6.364-.386 1.591-1.591M3 12H.75m.386-6.364 1.591 1.591" />
+    </svg>
+    <svg id="icon-moon" class="hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+    </svg>
+
+
+    <script>
+        // --- 1. SELEKSI ELEMEN DOM ---
+        // Elemen BARU
+        const landingScreen = document.getElementById('landing-screen');
+        const mainApp = document.getElementById('main-app');
+        const enterAppBtn = document.getElementById('enter-app-btn');
+
+        // Elemen Eksisting
+        const transactionForm = document.getElementById('transaction-form');
+        const transactionNameInput = document.getElementById('transaction-name');
+        const transactionAmountInput = document.getElementById('transaction-amount');
+        const transactionTypeInput = document.getElementById('transaction-type');
+        const transactionList = document.getElementById('transaction-list');
+        
+        // Elemen yang SEKARANG ADA di HTML
+        const totalAmountEl = document.getElementById('total-amount'); 
+        const themeToggle = document.getElementById('theme-toggle');
+        
+        const resetButton = document.getElementById('reset-button');
+        const typeBtnExpense = document.getElementById('type-btn-expense');
+        const typeBtnIncome = document.getElementById('type-btn-income');
+        
+        // Elemen Fitur Unik
+        const summaryIncome = document.getElementById('summary-income');
+        const summaryExpense = document.getElementById('summary-expense');
+        const summaryCount = document.getElementById('summary-count');
+        const summaryAvg = document.getElementById('summary-avg');
+        const summaryMax = document.getElementById('summary-max');
+        const favoriteForm = document.getElementById('favorite-form');
+        const favoriteNameInput = document.getElementById('favorite-name');
+        const favoriteAmountInput = document.getElementById('favorite-amount');
+        const favoritesList = document.getElementById('favorites-list');
+        const iconSun = document.getElementById('icon-sun').innerHTML;
+        const iconMoon = document.getElementById('icon-moon').innerHTML;
+
+        // --- 2. KUNCI LOCAL STORAGE ---
+        // Menggunakan v3 agar konsisten
+        const TRANSACTION_KEY = 'catat_jajan_harian_v3_transactions';
+        const FAVORITE_KEY = 'catat_jajan_harian_v3_favorites';
+        const THEME_KEY = 'catat_jajan_theme_v3';
+
+        // --- 3. STATE APLIKASI ---
+        let transactions = JSON.parse(localStorage.getItem(TRANSACTION_KEY)) || [];
+        let favorites = JSON.parse(localStorage.getItem(FAVORITE_KEY)) || [];
+        
+        // HITUNG TOTAL AWAL: Kita hitung total awal di sini
+        let currentTotal = transactions.reduce((acc, trans) => {
+            return trans.type === 'income' ? acc + trans.amount : acc - trans.amount;
+        }, 0);
+        
+        let currentTheme = localStorage.getItem(THEME_KEY) || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        
+        let isConfirmingReset = false;
+        let resetTimeout;
+
+        // --- 4. FUNGSI UTAMA (RENDER) ---
+
+        /**
+         * Fungsi global untuk render semua bagian UI
+         */
+        function renderApp() {
+            // SET TOTAL AWAL: Tampilkan total awal tanpa animasi
+            // Pastikan elemennya ada sebelum diatur
+            if (totalAmountEl) {
+                totalAmountEl.textContent = formatCurrency(currentTotal);
+            }
+            renderTransactions();
+            renderFavorites();
+            renderTheme();
+        }
+
+        /**
+         * Render daftar transaksi, total, dan ringkasan
+         */
+        function renderTransactions() {
+            transactionList.innerHTML = '';
+            let totalIncome = 0;
+            let totalExpense = 0;
+            let maxExpense = { name: '-', amount: 0 };
+            
+            const expenseItems = []; // Array baru HANYA untuk pengeluaran
+
+            if (transactions.length === 0) {
+                transactionList.innerHTML = '<li class="text-gray-500 dark:text-gray-400 text-center py-3 italic">Belum ada transaksi hari ini.</li>';
+            } else {
+                transactions.forEach((transaction, index) => {
+                    
+                    let amountClass = '';
+                    let amountPrefix = '';
+                    
+                    if (transaction.type === 'income') {
+                        totalIncome += transaction.amount;
+                        amountClass = 'text-green-600 dark:text-green-400';
+                        amountPrefix = '+';
+                    } else {
+                        totalExpense += transaction.amount;
+                        amountClass = 'text-red-600 dark:text-red-400';
+                        amountPrefix = '-';
+                        
+                        // PERBAIKAN: Kumpulkan data pengeluaran untuk ringkasan
+                        expenseItems.push(transaction); 
+                        
+                        if (transaction.amount > maxExpense.amount) {
+                            maxExpense = transaction;
+                        }
+                    }
+                    
+                    const li = document.createElement('li');
+                    li.className = 'transaction-item flex justify-between items-center py-3';
+                    
+                    li.innerHTML = `
+                        <div class="flex-grow">
+                            <span class="font-medium text-gray-800 dark:text-gray-100">${transaction.name}</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="font-semibold ${amountClass} mr-1">${amountPrefix} ${formatCurrency(transaction.amount)}</span>
+                            <button class="delete-btn text-gray-400 hover:text-red-500 transition-colors" data-index="${index}" title="Hapus">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    `;
+                    transactionList.appendChild(li);
+                });
+            }
+
+            // Update Sisa Saldo (dengan animasi)
+            const netBalance = totalIncome - totalExpense;
+            if (netBalance !== currentTotal && totalAmountEl) { // Cek jika totalAmountEl ada
+                animateTotal(currentTotal, netBalance); // Panggil fungsi animasi baru
+                currentTotal = netBalance; // Update state total saat ini
+            } else if (totalAmountEl) {
+                // Jika tidak ada perubahan, pastikan formatnya benar
+                totalAmountEl.textContent = formatCurrency(netBalance);
+            }
+            
+            // PERBAIKAN: Update Ringkasan berdasarkan data yang benar
+            summaryIncome.textContent = formatCurrency(totalIncome);
+            summaryExpense.textContent = formatCurrency(totalExpense);
+            
+            const count = expenseItems.length; // Hitung HANYA pengeluaran
+            const avg = count > 0 ? totalExpense / count : 0; // Bagi HANYA total pengeluaran
+            
+            summaryCount.textContent = count;
+            summaryAvg.textContent = formatCurrency(avg);
+            summaryMax.textContent = count > 0 ? `${maxExpense.name} (${formatCurrency(maxExpense.amount)})` : '-';
+
+            saveTransactions();
+            cancelResetConfirmation();
+        }
+
+        /**
+         * Render tombol-tombol favorit
+         */
+        function renderFavorites() {
+            favoritesList.innerHTML = '';
+            if (favorites.length === 0) {
+                favoritesList.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 italic">Belum ada favorit.</p>';
+                return;
+            }
+            
+            favorites.forEach((fav, index) => {
+                const button = document.createElement('button');
+                button.className = 'quick-add-btn btn bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-200 text-sm font-medium py-1 px-3 rounded-full hover:bg-green-200 dark:hover:bg-green-700';
+                button.textContent = `${fav.name} (${formatCurrency(fav.amount)})`;
+                button.setAttribute('data-name', fav.name);
+                button.setAttribute('data-amount', fav.amount);
+                
+                // Tambahkan tombol hapus favorit (opsional, tapi bagus)
+                const deleteBtn = document.createElement('span');
+                deleteBtn.className = 'delete-fav-btn text-red-400 hover:text-red-600 ml-2 font-bold';
+                deleteBtn.textContent = 'x';
+                deleteBtn.title = 'Hapus favorit';
+                deleteBtn.setAttribute('data-index', index);
+                button.appendChild(deleteBtn);
+                
+                favoritesList.appendChild(button);
+            });
+            saveFavorites();
+        }
+
+        /**
+         * Terapkan tema (terang/gelap)
+         */
+        function renderTheme() {
+            if (currentTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                if (themeToggle) themeToggle.innerHTML = iconSun; // Tampilkan ikon matahari (untuk beralih ke terang)
+            } else {
+                document.documentElement.classList.remove('dark');
+                if (themeToggle) themeToggle.innerHTML = iconMoon; // Tampilkan ikon bulan (untuk beralih ke gelap)
+            }
+            localStorage.setItem(THEME_KEY, currentTheme);
+        }
+
+        // --- 5. FUNGSI PENYIMPANAN ---
+        function saveTransactions() {
+            localStorage.setItem(TRANSACTION_KEY, JSON.stringify(transactions));
+        }
+        function saveFavorites() {
+            localStorage.setItem(FAVORITE_KEY, JSON.stringify(favorites));
+        }
+
+        // --- 6. FORMATTER ---
+        function formatCurrency(amount) {
+            // Memastikan jumlah adalah angka sebelum diformat
+            const numericAmount = Number(amount) || 0;
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(numericAmount);
+        }
+
+        /**
+         * FUNGSI BARU: Animasi "rolling" untuk total
+         */
+        function animateTotal(startValue, endValue) {
+            if (!totalAmountEl) return; // Jangan jalankan jika elemen tidak ada
+            
+            let startTime = null;
+            const duration = 500; // Durasi animasi 500ms
+
+            function animationStep(timestamp) {
+                if (!startTime) startTime = timestamp;
+                const progress = timestamp - startTime;
+                const percentage = Math.min(progress / duration, 1);
+                
+                // Efek "ease-out" (cepat di awal, lambat di akhir)
+                const easedPercentage = 1 - Math.pow(1 - percentage, 3);
+
+                const animatedValue = Math.round(startValue + (endValue - startValue) * easedPercentage);
+                
+                totalAmountEl.textContent = formatCurrency(animatedValue);
+
+                if (percentage < 1) {
+                    // Lanjut ke frame berikutnya
+                    requestAnimationFrame(animationStep);
+                } else {
+                    // Selesai: pastikan angka akhirnya akurat
+                    totalAmountEl.textContent = formatCurrency(endValue);
+                }
+            }
+            // Mulai animasi
+            requestAnimationFrame(animationStep);
+        }
+
+        // --- 7. EVENT HANDLERS ---
+
+        // HANDLER BARU: Untuk masuk ke aplikasi
+        function enterApplication() {
+            // 1. Animasi landing screen keluar
+            landingScreen.classList.remove('animate-fadeIn');
+            landingScreen.classList.add('animate-fadeOut');
+            
+            // 2. Tampilkan main app (setelah animasi landing selesai)
+            setTimeout(() => {
+                landingScreen.style.display = 'none'; // Sembunyikan permanen
+                mainApp.classList.remove('hidden'); // Tampilkan main app
+                mainApp.classList.add('animate-fadeIn'); // Animasi main app masuk
+            }, 500); // Sesuaikan dengan durasi animasi fadeOut
+        }
+
+        function addTransaction(event) {
+            event.preventDefault(); 
+            const name = transactionNameInput.value.trim();
+            const amount = parseFloat(transactionAmountInput.value);
+            const type = transactionTypeInput.value; // Ambil 'type' dari input tersembunyi
+            
+            if (name === '' || isNaN(amount) || amount <= 0) return;
+            
+            addTransactionItem(name, amount, type);
+
+            transactionNameInput.value = '';
+            transactionAmountInput.value = '';
+            transactionNameInput.focus();
+        }
+        
+        function addTransactionItem(name, amount, type) {
+            const newTransaction = { name, amount, type };
+            transactions.unshift(newTransaction); // unshift() agar item baru di atas
+            renderTransactions();
+            
+            const firstItem = transactionList.querySelector('li:first-child');
+            if (firstItem && !firstItem.classList.contains('italic')) {
+                firstItem.classList.add('transaction-item-enter');
+            }
+        }
+
+        function deleteTransaction(event) {
+            const button = event.target.closest('.delete-btn');
+            if (!button) return;
+
+            const li = button.closest('li');
+            const index = parseInt(button.getAttribute('data-index'), 10);
+            if (isNaN(index)) return;
+
+            li.classList.add('transaction-item-exit');
+            setTimeout(() => {
+                transactions.splice(index, 1);
+                renderTransactions();
+            }, 300); // Durasi harus sama dengan animasi 'transaction-item-exit'
+        }
+
+        function handleResetClick() {
+            if (!isConfirmingReset) {
+                isConfirmingReset = true;
+                resetButton.textContent = 'Yakin? Klik lagi untuk reset';
+                resetButton.classList.remove('bg-red-600', 'hover:bg-red-700');
+                resetButton.classList.add('bg-yellow-500', 'hover:bg-yellow-600');
+                resetTimeout = setTimeout(cancelResetConfirmation, 3000);
+            } else {
+                transactions = [];
+                // PENTING: Panggil renderTransactions() agar total juga ikut ter-update
+                renderTransactions();
+            }
+        }
+        
+        function cancelResetConfirmation() {
+            if (isConfirmingReset) {
+                isConfirmingReset = false;
+                clearTimeout(resetTimeout);
+                resetButton.textContent = 'Mulai Hari Baru (Reset)';
+                resetButton.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+                resetButton.classList.add('bg-red-600', 'hover:bg-red-700');
+            }
+        }
+
+        function addFavorite(event) {
+            event.preventDefault();
+            const name = favoriteNameInput.value.trim();
+            const amount = parseFloat(favoriteAmountInput.value);
+            if (name === '' || isNaN(amount) || amount <= 0) return;
+            
+            favorites.push({ name, amount });
+            renderFavorites();
+            
+            favoriteNameInput.value = '';
+            favoriteAmountInput.value = '';
+        }
+        
+        function handleFavoritesListClick(event) {
+            const target = event.target;
+            
+            // Cek jika klik tombol hapus favorit
+            if (target.classList.contains('delete-fav-btn')) {
+                const index = parseInt(target.getAttribute('data-index'), 10);
+                if (!isNaN(index)) {
+                    favorites.splice(index, 1);
+                    renderFavorites();
+                }
+                return;
+            }
+            
+            // Cek jika klik tombol quick-add
+            const button = target.closest('.quick-add-btn');
+            if (button) {
+                const name = button.getAttribute('data-name');
+                const amount = parseFloat(button.getAttribute('data-amount'));
+                addTransactionItem(name, amount, 'expense'); // Favorit selalu 'expense'
+            }
+        }
+
+        function toggleTheme() {
+            currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+            renderTheme();
+        }
+        
+        // HANDLER BARU: Mengatur Tombol Tipe Transaksi
+        function setTransactionType(event) {
+            const selectedType = event.currentTarget.getAttribute('data-type');
+            transactionTypeInput.value = selectedType;
+            
+            if (selectedType === 'income') {
+                typeBtnIncome.classList.add('bg-indigo-600', 'text-white');
+                typeBtnIncome.classList.remove('bg-white', 'dark:bg-gray-700', 'border', 'border-gray-300', 'dark:border-gray-600');
+                
+                typeBtnExpense.classList.remove('bg-indigo-600', 'text-white');
+                typeBtnExpense.classList.add('bg-white', 'dark:bg-gray-700', 'border', 'border-gray-300', 'dark:border-gray-600');
+            } else {
+                typeBtnExpense.classList.add('bg-indigo-600', 'text-white');
+                typeBtnExpense.classList.remove('bg-white', 'dark:bg-gray-700', 'border', 'border-gray-300', 'dark:border-gray-600');
+                
+                typeBtnIncome.classList.remove('bg-indigo-600', 'text-white');
+                typeBtnIncome.classList.add('bg-white', 'dark:bg-gray-700', 'border', 'border-gray-300', 'dark:border-gray-600');
+            }
+        }
+
+        // --- 8. EVENT LISTENERS ---
+        // Listener BARU
+        enterAppBtn.addEventListener('click', enterApplication);
+
+        // Listener Eksisting
+        transactionForm.addEventListener('submit', addTransaction);
+        transactionList.addEventListener('click', deleteTransaction);
+        resetButton.addEventListener('click', handleResetClick);
+        favoriteForm.addEventListener('submit', addFavorite);
+        favoritesList.addEventListener('click', handleFavoritesListClick);
+        
+        // Tambahkan listener HANYA jika tombolnya ada
+        if (themeToggle) {
+            themeToggle.addEventListener('click', toggleTheme);
+        }
+        
+        typeBtnExpense.addEventListener('click', setTransactionType);
+        typeBtnIncome.addEventListener('click', setTransactionType);
+
+        // --- 9. INISIALISASI ---
+        // Panggil renderApp saat halaman selesai dimuat
+        document.addEventListener('DOMContentLoaded', renderApp);
+
+    </script>
+</body>
+</html>
